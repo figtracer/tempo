@@ -50,9 +50,6 @@ impl AsRef<Self> for TempoHeader {
     }
 }
 
-#[cfg(feature = "serde-bincode-compat")]
-impl reth_primitives_traits::serde_bincode_compat::RlpBincode for TempoHeader {}
-
 impl BlockHeader for TempoHeader {
     fn parent_hash(&self) -> B256 {
         self.inner.parent_hash()
@@ -195,7 +192,7 @@ impl reth_db_api::table::Compress for TempoHeader {
 
 #[cfg(feature = "reth-codec")]
 impl reth_db_api::table::Decompress for TempoHeader {
-    fn decompress(value: &[u8]) -> Result<Self, reth_db_api::DatabaseError> {
+    fn decompress(value: &[u8]) -> Result<Self, reth_codecs::DecompressError> {
         let (obj, _) = reth_codecs::Compact::from_compact(value, value.len());
         Ok(obj)
     }

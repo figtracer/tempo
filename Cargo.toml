@@ -116,73 +116,74 @@ tempo-contracts = { path = "crates/contracts", default-features = false }
 tempo-telemetry-util = { path = "crates/telemetry-util", default-features = false }
 tempo-transaction-pool = { path = "crates/transaction-pool", default-features = false }
 
-reth-basic-payload-builder = { git = "https://github.com/paradigmxyz/reth", rev = "245cca7" }
-reth-chainspec = { git = "https://github.com/paradigmxyz/reth", rev = "245cca7" }
-reth-cli = { git = "https://github.com/paradigmxyz/reth", rev = "245cca7" }
-reth-cli-commands = { git = "https://github.com/paradigmxyz/reth", rev = "245cca7" }
-reth-cli-util = { git = "https://github.com/paradigmxyz/reth", rev = "245cca7" }
-reth-codecs = { git = "https://github.com/paradigmxyz/reth", rev = "245cca7" }
-reth-codecs-derive = { git = "https://github.com/paradigmxyz/reth", rev = "245cca7" }
-reth-consensus = { git = "https://github.com/paradigmxyz/reth", rev = "245cca7" }
-reth-consensus-common = { git = "https://github.com/paradigmxyz/reth", rev = "245cca7" }
-reth-db = { git = "https://github.com/paradigmxyz/reth", rev = "245cca7" }
-reth-db-api = { git = "https://github.com/paradigmxyz/reth", rev = "245cca7" }
-reth-errors = { git = "https://github.com/paradigmxyz/reth", rev = "245cca7" }
-reth-eth-wire-types = { git = "https://github.com/paradigmxyz/reth", rev = "245cca7" }
-reth-ethereum-engine-primitives = { git = "https://github.com/paradigmxyz/reth", rev = "245cca7" }
-reth-evm = { git = "https://github.com/paradigmxyz/reth", rev = "245cca7" }
-reth-evm-ethereum = { git = "https://github.com/paradigmxyz/reth", rev = "245cca7" }
-reth-ethereum-primitives = { git = "https://github.com/paradigmxyz/reth", rev = "245cca7", default-features = false }
-reth-metrics = { git = "https://github.com/paradigmxyz/reth", rev = "245cca7" }
-reth-node-builder = { git = "https://github.com/paradigmxyz/reth", rev = "245cca7" }
-reth-node-core = { git = "https://github.com/paradigmxyz/reth", rev = "245cca7" }
-reth-node-ethereum = { git = "https://github.com/paradigmxyz/reth", rev = "245cca7" }
-reth-network-peers = { git = "https://github.com/paradigmxyz/reth", rev = "245cca7" }
-reth-payload-builder = { git = "https://github.com/paradigmxyz/reth", rev = "245cca7" }
-reth-payload-primitives = { git = "https://github.com/paradigmxyz/reth", rev = "245cca7" }
-reth-primitives-traits = { git = "https://github.com/paradigmxyz/reth", rev = "245cca7", default-features = false }
-reth-provider = { git = "https://github.com/paradigmxyz/reth", rev = "245cca7" }
-reth-rpc-builder = { git = "https://github.com/paradigmxyz/reth", rev = "245cca7" }
-reth-rpc-convert = { git = "https://github.com/paradigmxyz/reth", rev = "245cca7" }
-reth-rpc-eth-api = { git = "https://github.com/paradigmxyz/reth", rev = "245cca7" }
-reth-storage-api = { git = "https://github.com/paradigmxyz/reth", rev = "245cca7" }
-reth-tracing = { git = "https://github.com/paradigmxyz/reth", rev = "245cca7" }
-reth-node-api = { git = "https://github.com/paradigmxyz/reth", rev = "245cca7" }
-reth-rpc = { git = "https://github.com/paradigmxyz/reth", rev = "245cca7" }
-reth-rpc-eth-types = { git = "https://github.com/paradigmxyz/reth", rev = "245cca7" }
-reth-rpc-server-types = { git = "https://github.com/paradigmxyz/reth", rev = "245cca7" }
-reth-node-metrics = { git = "https://github.com/paradigmxyz/reth", rev = "245cca7" }
-reth-transaction-pool = { git = "https://github.com/paradigmxyz/reth", rev = "245cca7" }
-reth-engine-local = { git = "https://github.com/paradigmxyz/reth", rev = "245cca7" }
-reth-ethereum-consensus = { git = "https://github.com/paradigmxyz/reth", rev = "245cca7" }
-reth-ethereum = { git = "https://github.com/paradigmxyz/reth", rev = "245cca7" }
-reth-ethereum-cli = { git = "https://github.com/paradigmxyz/reth", rev = "245cca7" }
-reth-e2e-test-utils = { git = "https://github.com/paradigmxyz/reth", rev = "245cca7" }
+reth-basic-payload-builder = { git = "https://github.com/figtracer/reth", branch = "chore/bump-alloy-2.0" }
+reth-chainspec = { git = "https://github.com/figtracer/reth", branch = "chore/bump-alloy-2.0" }
+reth-cli = { git = "https://github.com/figtracer/reth", branch = "chore/bump-alloy-2.0" }
+reth-cli-commands = { git = "https://github.com/figtracer/reth", branch = "chore/bump-alloy-2.0" }
+reth-cli-util = { git = "https://github.com/figtracer/reth", branch = "chore/bump-alloy-2.0" }
+reth-codecs = { git = "https://github.com/figtracer/reth-core", branch = "alloy-2.0" }
+reth-codecs-derive = { git = "https://github.com/figtracer/reth-core", branch = "alloy-2.0" }
+reth-consensus = { git = "https://github.com/figtracer/reth", branch = "chore/bump-alloy-2.0" }
+reth-consensus-common = { git = "https://github.com/figtracer/reth", branch = "chore/bump-alloy-2.0" }
+reth-db = { git = "https://github.com/figtracer/reth", branch = "chore/bump-alloy-2.0" }
+reth-db-api = { git = "https://github.com/figtracer/reth", branch = "chore/bump-alloy-2.0" }
+reth-errors = { git = "https://github.com/figtracer/reth", branch = "chore/bump-alloy-2.0" }
+reth-eth-wire-types = { git = "https://github.com/figtracer/reth", branch = "chore/bump-alloy-2.0" }
+reth-ethereum-engine-primitives = { git = "https://github.com/figtracer/reth", branch = "chore/bump-alloy-2.0" }
+reth-evm = { git = "https://github.com/figtracer/reth", branch = "chore/bump-alloy-2.0" }
+reth-evm-ethereum = { git = "https://github.com/figtracer/reth", branch = "chore/bump-alloy-2.0" }
+reth-ethereum-primitives = { git = "https://github.com/figtracer/reth", branch = "chore/bump-alloy-2.0", default-features = false }
+reth-metrics = { git = "https://github.com/figtracer/reth", branch = "chore/bump-alloy-2.0" }
+reth-node-builder = { git = "https://github.com/figtracer/reth", branch = "chore/bump-alloy-2.0" }
+reth-node-core = { git = "https://github.com/figtracer/reth", branch = "chore/bump-alloy-2.0" }
+reth-node-ethereum = { git = "https://github.com/figtracer/reth", branch = "chore/bump-alloy-2.0" }
+reth-network-peers = { git = "https://github.com/figtracer/reth", branch = "chore/bump-alloy-2.0" }
+reth-payload-builder = { git = "https://github.com/figtracer/reth", branch = "chore/bump-alloy-2.0" }
+reth-payload-primitives = { git = "https://github.com/figtracer/reth", branch = "chore/bump-alloy-2.0" }
+reth-primitives-traits = { git = "https://github.com/figtracer/reth-core", branch = "alloy-2.0", default-features = false }
+reth-provider = { git = "https://github.com/figtracer/reth", branch = "chore/bump-alloy-2.0" }
+reth-rpc-builder = { git = "https://github.com/figtracer/reth", branch = "chore/bump-alloy-2.0" }
+reth-rpc-convert = { git = "https://github.com/figtracer/reth", branch = "chore/bump-alloy-2.0" }
+reth-rpc-eth-api = { git = "https://github.com/figtracer/reth", branch = "chore/bump-alloy-2.0" }
+reth-storage-api = { git = "https://github.com/figtracer/reth", branch = "chore/bump-alloy-2.0" }
+reth-tracing = { git = "https://github.com/figtracer/reth", branch = "chore/bump-alloy-2.0" }
+reth-node-api = { git = "https://github.com/figtracer/reth", branch = "chore/bump-alloy-2.0" }
+reth-rpc = { git = "https://github.com/figtracer/reth", branch = "chore/bump-alloy-2.0" }
+reth-rpc-eth-types = { git = "https://github.com/figtracer/reth", branch = "chore/bump-alloy-2.0" }
+reth-rpc-server-types = { git = "https://github.com/figtracer/reth", branch = "chore/bump-alloy-2.0" }
+reth-node-metrics = { git = "https://github.com/figtracer/reth", branch = "chore/bump-alloy-2.0" }
+reth-transaction-pool = { git = "https://github.com/figtracer/reth", branch = "chore/bump-alloy-2.0" }
+reth-engine-local = { git = "https://github.com/figtracer/reth", branch = "chore/bump-alloy-2.0" }
+reth-ethereum-consensus = { git = "https://github.com/figtracer/reth", branch = "chore/bump-alloy-2.0" }
+reth-ethereum = { git = "https://github.com/figtracer/reth", branch = "chore/bump-alloy-2.0" }
+reth-ethereum-cli = { git = "https://github.com/figtracer/reth", branch = "chore/bump-alloy-2.0" }
+reth-e2e-test-utils = { git = "https://github.com/figtracer/reth", branch = "chore/bump-alloy-2.0" }
 
-reth-revm = { git = "https://github.com/paradigmxyz/reth", rev = "245cca7", features = [
+reth-revm = { git = "https://github.com/figtracer/reth", branch = "chore/bump-alloy-2.0", features = [
   "std",
   "optional-checks",
 ] }
-revm = { version = "33.1.0", features = ["optional_fee_charge"] }
+revm = { version = "36.0.0", features = ["optional_fee_charge"], default-features = false }
+revm-inspectors = "0.36.1"
 
-alloy = { version = "1.1.3", default-features = false }
-alloy-consensus = "1.1.3"
-alloy-contract = "1.1.3"
-alloy-eips = "1.1.3"
-alloy-evm = "0.24.2"
-alloy-genesis = "1.1.3"
-alloy-hardforks = "0.4.5"
-alloy-network = { version = "1.1.3"}
-alloy-primitives = "1.4.1"
-alloy-provider = { version = "1.1.3", default-features = false}
-alloy-rlp = "0.3.12"
-alloy-rpc-types-engine = "1.1.3"
-alloy-rpc-types-eth = { version = "1.1.3"}
-alloy-serde = "1.1.3"
-alloy-signer = "1.1.3"
-alloy-signer-local = "1.1.3"
-alloy-sol-types = "1.4.1"
-alloy-transport = "1.1.3"
+alloy = { version = "2.0.0-rc.0", default-features = false }
+alloy-consensus = { version = "2.0.0-rc.0", default-features = false }
+alloy-contract = { version = "2.0.0-rc.0", default-features = false }
+alloy-eips = { version = "2.0.0-rc.0", default-features = false }
+alloy-evm = { version = "0.29.2", default-features = false }
+alloy-genesis = "2.0.0-rc.0"
+alloy-hardforks = "0.4.7"
+alloy-network = { version = "2.0.0-rc.0", default-features = false }
+alloy-primitives = "1.5.2"
+alloy-provider = { version = "2.0.0-rc.0", default-features = false }
+alloy-rlp = "0.3"
+alloy-rpc-types-engine = "2.0.0-rc.0"
+alloy-rpc-types-eth = { version = "2.0.0-rc.0" }
+alloy-serde = { version = "2.0.0-rc.0", default-features = false }
+alloy-signer = "2.0.0-rc.0"
+alloy-signer-local = "2.0.0-rc.0"
+alloy-sol-types = "1.5.2"
+alloy-transport = "2.0.0-rc.0"
 
 commonware-broadcast = "0.0.63"
 commonware-codec = "0.0.63"
@@ -251,55 +252,43 @@ commonware-runtime = { git = "https://github.com/commonwarexyz/monorepo", rev = 
 commonware-storage = { git = "https://github.com/commonwarexyz/monorepo", rev = "b9740e83dbdacc45acc2dd14fcbaddc2f02e8252" }
 commonware-utils = { git = "https://github.com/commonwarexyz/monorepo", rev = "b9740e83dbdacc45acc2dd14fcbaddc2f02e8252" }
 
-#[patch."https://github.com/paradigmxyz/reth"]
-#reth-basic-payload-builder = { path = "../reth/crates/payload/basic" }
-#reth-chainspec = { path = "../reth/crates/chainspec" }
-#reth-cli = { path = "../reth/crates/cli/cli" }
-#reth-cli-commands = { path = "../reth/crates/cli/commands" }
-#reth-cli-runner = { path = "../reth/crates/cli/runner" }
-#reth-cli-util = { path = "../reth/crates/cli/util" }
-#reth-codecs = { path = "../reth/crates/storage/codecs" }
-#reth-codecs-derive = { path = "../reth/crates/storage/codecs/derive" }
-#reth-consensus = { path = "../reth/crates/consensus/consensus" }
-#reth-consensus-common = { path = "../reth/crates/consensus/common" }
-#reth-db = { path = "../reth/crates/storage/db" }
-#reth-db-api = { path = "../reth/crates/storage/db-api" }
-#reth-e2e-test-utils = { path = "../reth/crates/e2e-test-utils" }
-#reth-engine-local = { path = "../reth/crates/engine/local" }
-#reth-engine-primitives = { path = "../reth/crates/engine/primitives" }
-#reth-errors = { path = "../reth/crates/errors" }
-#reth-eth-wire-types = { path = "../reth/crates/net/eth-wire-types" }
-#reth-ethereum = { path = "../reth/crates/ethereum/reth" }
-#reth-ethereum-cli = { path = "../reth/crates/ethereum/cli" }
-#reth-ethereum-consensus = { path = "../reth/crates/ethereum/consensus" }
-#reth-ethereum-engine-primitives = { path = "../reth/crates/ethereum/engine-primitives" }
-#reth-ethereum-forks = { path = "../reth/crates/ethereum/hardforks" }
-#reth-ethereum-primitives = { path = "../reth/crates/ethereum/primitives" }
-#reth-evm = { path = "../reth/crates/evm/evm" }
-#reth-evm-ethereum = { path = "../reth/crates/ethereum/evm" }
-#reth-execution-types = { path = "../reth/crates/evm/execution-types" }
-#reth-metrics = { path = "../reth/crates/metrics" }
-#reth-network = { path = "../reth/crates/net/network" }
-#reth-network-peers = { path = "../reth/crates/net/peers" }
-#reth-node-api = { path = "../reth/crates/node/api" }
-#reth-node-builder = { path = "../reth/crates/node/builder" }
-#reth-node-core = { path = "../reth/crates/node/core" }
-#reth-node-ethereum = { path = "../reth/crates/ethereum/node" }
-#reth-node-metrics = { path = "../reth/crates/node/metrics" }
-#reth-payload-builder = { path = "../reth/crates/payload/builder" }
-#reth-payload-primitives = { path = "../reth/crates/payload/primitives" }
-#reth-primitives-traits = { path = "../reth/crates/primitives-traits" }
-#reth-provider = { path = "../reth/crates/storage/provider" }
-#reth-revm = { path = "../reth/crates/revm" }
-#reth-rpc = { path = "../reth/crates/rpc/rpc" }
-#reth-rpc-api = { path = "../reth/crates/rpc/rpc-api" }
-#reth-rpc-builder = { path = "../reth/crates/rpc/rpc-builder" }
-#reth-rpc-convert = { path = "../reth/crates/rpc/rpc-convert" }
-#reth-rpc-eth-api = { path = "../reth/crates/rpc/rpc-eth-api" }
-#reth-rpc-eth-types = { path = "../reth/crates/rpc/rpc-eth-types" }
-#reth-rpc-server-types = { path = "../reth/crates/rpc/rpc-server-types" }
-#reth-storage-api = { path = "../reth/crates/storage/storage-api" }
-#reth-tasks = { path = "../reth/crates/tasks" }
-#reth-tracing = { path = "../reth/crates/tracing" }
-#reth-transaction-pool = { path = "../reth/crates/transaction-pool" }
-#reth-trie-db = { path = "../reth/crates/trie/db" }
+## alloy
+alloy = { git = "https://github.com/alloy-rs/alloy", rev = "100a3325ac4d624f3eb0bd404125750e76edf8ca" }
+alloy-consensus = { git = "https://github.com/alloy-rs/alloy", rev = "100a3325ac4d624f3eb0bd404125750e76edf8ca" }
+alloy-contract = { git = "https://github.com/alloy-rs/alloy", rev = "100a3325ac4d624f3eb0bd404125750e76edf8ca" }
+alloy-eips = { git = "https://github.com/alloy-rs/alloy", rev = "100a3325ac4d624f3eb0bd404125750e76edf8ca" }
+alloy-genesis = { git = "https://github.com/alloy-rs/alloy", rev = "100a3325ac4d624f3eb0bd404125750e76edf8ca" }
+alloy-json-rpc = { git = "https://github.com/alloy-rs/alloy", rev = "100a3325ac4d624f3eb0bd404125750e76edf8ca" }
+alloy-network = { git = "https://github.com/alloy-rs/alloy", rev = "100a3325ac4d624f3eb0bd404125750e76edf8ca" }
+alloy-network-primitives = { git = "https://github.com/alloy-rs/alloy", rev = "100a3325ac4d624f3eb0bd404125750e76edf8ca" }
+alloy-provider = { git = "https://github.com/alloy-rs/alloy", rev = "100a3325ac4d624f3eb0bd404125750e76edf8ca" }
+alloy-pubsub = { git = "https://github.com/alloy-rs/alloy", rev = "100a3325ac4d624f3eb0bd404125750e76edf8ca" }
+alloy-rpc-client = { git = "https://github.com/alloy-rs/alloy", rev = "100a3325ac4d624f3eb0bd404125750e76edf8ca" }
+alloy-rpc-types = { git = "https://github.com/alloy-rs/alloy", rev = "100a3325ac4d624f3eb0bd404125750e76edf8ca" }
+alloy-rpc-types-admin = { git = "https://github.com/alloy-rs/alloy", rev = "100a3325ac4d624f3eb0bd404125750e76edf8ca" }
+alloy-rpc-types-anvil = { git = "https://github.com/alloy-rs/alloy", rev = "100a3325ac4d624f3eb0bd404125750e76edf8ca" }
+alloy-rpc-types-beacon = { git = "https://github.com/alloy-rs/alloy", rev = "100a3325ac4d624f3eb0bd404125750e76edf8ca" }
+alloy-rpc-types-debug = { git = "https://github.com/alloy-rs/alloy", rev = "100a3325ac4d624f3eb0bd404125750e76edf8ca" }
+alloy-rpc-types-engine = { git = "https://github.com/alloy-rs/alloy", rev = "100a3325ac4d624f3eb0bd404125750e76edf8ca" }
+alloy-rpc-types-eth = { git = "https://github.com/alloy-rs/alloy", rev = "100a3325ac4d624f3eb0bd404125750e76edf8ca" }
+alloy-rpc-types-mev = { git = "https://github.com/alloy-rs/alloy", rev = "100a3325ac4d624f3eb0bd404125750e76edf8ca" }
+alloy-rpc-types-trace = { git = "https://github.com/alloy-rs/alloy", rev = "100a3325ac4d624f3eb0bd404125750e76edf8ca" }
+alloy-rpc-types-txpool = { git = "https://github.com/alloy-rs/alloy", rev = "100a3325ac4d624f3eb0bd404125750e76edf8ca" }
+alloy-serde = { git = "https://github.com/alloy-rs/alloy", rev = "100a3325ac4d624f3eb0bd404125750e76edf8ca" }
+alloy-signer = { git = "https://github.com/alloy-rs/alloy", rev = "100a3325ac4d624f3eb0bd404125750e76edf8ca" }
+alloy-signer-local = { git = "https://github.com/alloy-rs/alloy", rev = "100a3325ac4d624f3eb0bd404125750e76edf8ca" }
+alloy-transport = { git = "https://github.com/alloy-rs/alloy", rev = "100a3325ac4d624f3eb0bd404125750e76edf8ca" }
+alloy-transport-http = { git = "https://github.com/alloy-rs/alloy", rev = "100a3325ac4d624f3eb0bd404125750e76edf8ca" }
+alloy-transport-ipc = { git = "https://github.com/alloy-rs/alloy", rev = "100a3325ac4d624f3eb0bd404125750e76edf8ca" }
+alloy-transport-ws = { git = "https://github.com/alloy-rs/alloy", rev = "100a3325ac4d624f3eb0bd404125750e76edf8ca" }
+
+## alloy-evm (alloy 2.0 + revm 36)
+alloy-evm = { git = "https://github.com/figtracer/evm.git", branch = "alloy-2.0-revm36" }
+
+## revm-inspectors
+revm-inspectors = { git = "https://github.com/figtracer/revm-inspectors.git", branch = "alloy-2.0-revm36" }
+
+## reth-core
+reth-primitives-traits = { git = "https://github.com/figtracer/reth-core", branch = "alloy-2.0" }
+reth-codecs = { git = "https://github.com/figtracer/reth-core", branch = "alloy-2.0" }
+reth-codecs-derive = { git = "https://github.com/figtracer/reth-core", branch = "alloy-2.0" }

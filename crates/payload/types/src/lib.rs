@@ -5,12 +5,12 @@
 
 mod attrs;
 
-use alloy_primitives::B256;
+use alloy_primitives::{Bytes, B256};
 pub use attrs::{InterruptHandle, TempoPayloadAttributes, TempoPayloadBuilderAttributes};
 
 use alloy_rpc_types_eth::Withdrawal;
 use reth_ethereum_engine_primitives::EthBuiltPayload;
-use reth_node_api::{ExecutionPayload, PayloadBuilderAttributes, PayloadTypes};
+use reth_node_api::{ExecutionPayload, PayloadTypes};
 use reth_primitives_traits::{AlloyBlockHeader as _, SealedBlock};
 use serde::{Deserialize, Serialize};
 use tempo_primitives::{Block, TempoPrimitives};
@@ -50,6 +50,10 @@ impl ExecutionPayload for TempoExecutionData {
             .map(|withdrawals| &withdrawals.0)
     }
 
+    fn block_access_list(&self) -> Option<&Bytes> {
+        None
+    }
+
     fn parent_beacon_block_root(&self) -> Option<alloy_primitives::B256> {
         self.block.parent_beacon_block_root()
     }
@@ -61,14 +65,16 @@ impl ExecutionPayload for TempoExecutionData {
     fn gas_used(&self) -> u64 {
         self.block.gas_used()
     }
+
+    fn transaction_count(&self) -> usize {
+        self.block.body().transactions.len()
+    }
 }
 
 impl PayloadTypes for TempoPayloadTypes {
     type ExecutionData = TempoExecutionData;
     type BuiltPayload = EthBuiltPayload<TempoPrimitives>;
-    type PayloadAttributes =
-        <Self::PayloadBuilderAttributes as PayloadBuilderAttributes>::RpcPayloadAttributes;
-    type PayloadBuilderAttributes = TempoPayloadBuilderAttributes;
+    type PayloadAttributes = TempoPayloadAttributes;
 
     fn block_to_payload(block: SealedBlock<Block>) -> Self::ExecutionData {
         TempoExecutionData {

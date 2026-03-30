@@ -1,13 +1,10 @@
 use alloy_primitives::{Address, B256, Bytes};
 use alloy_rpc_types_engine::PayloadId;
 use alloy_rpc_types_eth::Withdrawals;
-use reth_ethereum_engine_primitives::{EthPayloadAttributes, EthPayloadBuilderAttributes};
-use reth_node_api::{PayloadAttributes, PayloadBuilderAttributes};
+use reth_ethereum_engine_primitives::EthPayloadAttributes;
+use reth_node_api::PayloadAttributes;
 use serde::{Deserialize, Serialize};
-use std::{
-    convert::Infallible,
-    sync::{Arc, atomic, atomic::Ordering},
-};
+use std::sync::{Arc, atomic, atomic::Ordering};
 use tempo_primitives::RecoveredSubBlock;
 
 /// A handle for a payload interrupt flag.
@@ -35,7 +32,20 @@ impl InterruptHandle {
 /// It also carries DKG data to be included in the block's extra_data field.
 #[derive(derive_more::Debug, Clone)]
 pub struct TempoPayloadBuilderAttributes {
-    inner: EthPayloadBuilderAttributes,
+    /// The payload ID for this build job.
+    pub id: PayloadId,
+    /// The parent block hash.
+    pub parent: B256,
+    /// Timestamp in seconds.
+    pub timestamp: u64,
+    /// Suggested fee recipient.
+    pub suggested_fee_recipient: Address,
+    /// Previous randomness value.
+    pub prev_randao: B256,
+    /// Withdrawals to include.
+    pub withdrawals: Withdrawals,
+    /// Parent beacon block root.
+    pub parent_beacon_block_root: Option<B256>,
     interrupt: InterruptHandle,
     timestamp_millis_part: u64,
     /// DKG ceremony data to include in the block's extra_data header field.
@@ -59,15 +69,13 @@ impl TempoPayloadBuilderAttributes {
     ) -> Self {
         let (seconds, millis) = (timestamp_millis / 1000, timestamp_millis % 1000);
         Self {
-            inner: EthPayloadBuilderAttributes {
-                id,
-                parent,
-                timestamp: seconds,
-                suggested_fee_recipient,
-                prev_randao: B256::ZERO,
-                withdrawals: Withdrawals::default(),
-                parent_beacon_block_root: Some(B256::ZERO),
-            },
+            id,
+            parent,
+            timestamp: seconds,
+            suggested_fee_recipient,
+            prev_randao: B256::ZERO,
+            withdrawals: Withdrawals::default(),
+            parent_beacon_block_root: Some(B256::ZERO),
             interrupt: InterruptHandle::default(),
             timestamp_millis_part: millis,
             extra_data,
@@ -98,84 +106,39 @@ impl TempoPayloadBuilderAttributes {
 
     /// Returns the timestamp in milliseconds.
     pub fn timestamp_millis(&self) -> u64 {
-        self.inner
-            .timestamp()
+        self.timestamp
             .saturating_mul(1000)
             .saturating_add(self.timestamp_millis_part)
+    }
+
+    /// Returns the parent block hash.
+    pub fn parent(&self) -> B256 {
+        self.parent
+    }
+
+    /// Returns the suggested fee recipient.
+    pub fn suggested_fee_recipient(&self) -> Address {
+        self.suggested_fee_recipient
+    }
+
+    /// Returns the previous randomness value.
+    pub fn prev_randao(&self) -> B256 {
+        self.prev_randao
+    }
+
+    /// Returns the withdrawals.
+    pub fn withdrawals(&self) -> &Withdrawals {
+        &self.withdrawals
+    }
+
+    /// Returns the parent beacon block root.
+    pub fn parent_beacon_block_root(&self) -> Option<B256> {
+        self.parent_beacon_block_root
     }
 
     /// Returns the subblocks.
     pub fn subblocks(&self) -> Vec<RecoveredSubBlock> {
         (self.subblocks)()
-    }
-}
-
-// Required by reth's e2e-test-utils for integration tests.
-// The test utilities need to convert from standard Ethereum payload attributes
-// to custom chain-specific attributes.
-impl From<EthPayloadBuilderAttributes> for TempoPayloadBuilderAttributes {
-    fn from(inner: EthPayloadBuilderAttributes) -> Self {
-        Self {
-            inner,
-            interrupt: InterruptHandle::default(),
-            timestamp_millis_part: 0,
-            extra_data: Bytes::default(),
-            subblocks: Arc::new(Vec::new),
-        }
-    }
-}
-
-impl PayloadBuilderAttributes for TempoPayloadBuilderAttributes {
-    type RpcPayloadAttributes = TempoPayloadAttributes;
-    type Error = Infallible;
-
-    fn try_new(
-        parent: B256,
-        rpc_payload_attributes: Self::RpcPayloadAttributes,
-        version: u8,
-    ) -> Result<Self, Self::Error>
-    where
-        Self: Sized,
-    {
-        let TempoPayloadAttributes {
-            inner,
-            timestamp_millis_part,
-        } = rpc_payload_attributes;
-        Ok(Self {
-            inner: EthPayloadBuilderAttributes::try_new(parent, inner, version)?,
-            interrupt: InterruptHandle::default(),
-            timestamp_millis_part,
-            extra_data: Bytes::default(),
-            subblocks: Arc::new(Vec::new),
-        })
-    }
-
-    fn payload_id(&self) -> alloy_rpc_types_engine::payload::PayloadId {
-        self.inner.payload_id()
-    }
-
-    fn parent(&self) -> B256 {
-        self.inner.parent()
-    }
-
-    fn timestamp(&self) -> u64 {
-        self.inner.timestamp()
-    }
-
-    fn parent_beacon_block_root(&self) -> Option<B256> {
-        self.inner.parent_beacon_block_root()
-    }
-
-    fn suggested_fee_recipient(&self) -> Address {
-        self.inner.suggested_fee_recipient()
-    }
-
-    fn prev_randao(&self) -> B256 {
-        self.inner.prev_randao()
-    }
-
-    fn withdrawals(&self) -> &Withdrawals {
-        self.inner.withdrawals()
     }
 }
 
@@ -195,6 +158,10 @@ pub struct TempoPayloadAttributes {
 }
 
 impl PayloadAttributes for TempoPayloadAttributes {
+    fn payload_id(&self, parent_hash: &B256) -> PayloadId {
+        self.inner.payload_id(parent_hash)
+    }
+
     fn timestamp(&self) -> u64 {
         self.inner.timestamp()
     }
@@ -229,9 +196,9 @@ mod tests {
         );
 
         assert_eq!(attrs.extra_data(), &Bytes::default());
-        assert_eq!(attrs.parent(), parent);
-        assert_eq!(attrs.suggested_fee_recipient(), recipient);
-        assert_eq!(attrs.timestamp(), 1); // 1000 ms / 1000 = 1 second
+        assert_eq!(attrs.parent, parent);
+        assert_eq!(attrs.suggested_fee_recipient, recipient);
+        assert_eq!(attrs.timestamp, 1); // 1000 ms / 1000 = 1 second
     }
 
     #[test]
@@ -252,8 +219,8 @@ mod tests {
         );
 
         assert_eq!(attrs.extra_data(), &extra_data);
-        assert_eq!(attrs.parent(), parent);
-        assert_eq!(attrs.suggested_fee_recipient(), recipient);
+        assert_eq!(attrs.parent, parent);
+        assert_eq!(attrs.suggested_fee_recipient, recipient);
     }
 
     #[test]

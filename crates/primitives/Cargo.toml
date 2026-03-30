@@ -31,7 +31,7 @@ alloy-network = { workspace = true, optional = true }
 arbitrary = { workspace = true, features = ["derive"], optional = true }
 derive_more.workspace = true
 serde = { workspace = true, features = ["derive"], optional = true }
-modular-bitfield = { version = "0.11.2", optional = true }
+modular-bitfield = { version = "0.13", optional = true }
 
 # Cryptography for P256 and WebAuthn signature verification
 p256 = { workspace = true, features = ["ecdsa"] }
@@ -51,7 +51,7 @@ serde_json.workspace = true
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 
 [features]
-default = ["serde", "reth-codec", "serde-bincode-compat", "rpc"]
+default = ["serde", "reth-codec", "rpc"]
 serde = [
 	"dep:serde",
 	"dep:alloy-serde",
@@ -77,8 +77,6 @@ reth-codec = [
 serde-bincode-compat = [
 	"serde",
 	"alloy-consensus/serde-bincode-compat",
-	"reth-primitives-traits/serde-bincode-compat",
-	"reth-ethereum-primitives/serde-bincode-compat",
 	"alloy-eips/serde-bincode-compat",
 	"alloy-rpc-types-eth?/serde-bincode-compat",
 ]

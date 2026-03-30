@@ -445,9 +445,6 @@ impl reth_primitives_traits::InMemorySize for TxFeeToken {
     }
 }
 
-#[cfg(feature = "serde-bincode-compat")]
-impl reth_primitives_traits::serde_bincode_compat::RlpBincode for TxFeeToken {}
-
 #[cfg(any(test, feature = "arbitrary"))]
 impl<'a> arbitrary::Arbitrary<'a> for TxFeeToken {
     fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {

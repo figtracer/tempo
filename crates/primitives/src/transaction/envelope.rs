@@ -323,8 +323,6 @@ impl alloy_consensus::transaction::TxHashRef for TempoTxEnvelope {
     }
 }
 
-impl reth_primitives_traits::SignedTransaction for TempoTxEnvelope {}
-
 impl InMemorySize for TempoTxType {
     fn size(&self) -> usize {
         core::mem::size_of::<Self>()
@@ -491,9 +489,6 @@ impl reth_rpc_convert::TryIntoSimTx<TempoTxEnvelope> for alloy_rpc_types_eth::Tr
             .map_err(|_| ValueError::new_static(self, "Invalid transaction request"))
     }
 }
-
-#[cfg(feature = "serde-bincode-compat")]
-impl reth_primitives_traits::serde_bincode_compat::RlpBincode for TempoTxEnvelope {}
 
 #[cfg(feature = "reth-codec")]
 mod codec {
@@ -675,7 +670,7 @@ mod codec {
     }
 
     impl reth_db_api::table::Decompress for TempoTxEnvelope {
-        fn decompress(value: &[u8]) -> Result<Self, reth_db_api::DatabaseError> {
+        fn decompress(value: &[u8]) -> Result<Self, reth_codecs::DecompressError> {
             let (obj, _) = Compact::from_compact(value, value.len());
             Ok(obj)
         }
