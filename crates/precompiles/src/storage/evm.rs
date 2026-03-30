@@ -42,7 +42,7 @@ impl<'a> EvmPrecompileStorageProvider<'a> {
 
     pub fn ensure_loaded_account(&mut self, account: Address) -> Result<(), EvmInternalsError> {
         self.internals.load_account(account)?;
-        self.internals.touch_account(account);
+        self.internals.touch_account(account)?;
         Ok(())
     }
 }
@@ -65,7 +65,7 @@ impl<'a> PrecompileStorageProvider for EvmPrecompileStorageProvider<'a> {
         self.ensure_loaded_account(address)?;
         self.deduct_gas(code.len() as u64 * revm::interpreter::gas::CODEDEPOSIT)?;
 
-        self.internals.set_code(address, code);
+        self.internals.set_code(address, code)?;
 
         Ok(())
     }

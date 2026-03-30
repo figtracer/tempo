@@ -17,10 +17,10 @@ pub mod evm;
 use std::{borrow::Cow, sync::Arc};
 
 use alloy_evm::{
-    self, Database, EvmEnv,
-    block::{BlockExecutorFactory, BlockExecutorFor},
+    self, EvmEnv,
+    block::{BlockExecutorFactory, BlockExecutorFor, StateDB},
     eth::{EthBlockExecutionCtx, NextEvmEnvAttributes},
-    revm::{Inspector, database::State},
+    revm::Inspector,
 };
 pub use evm::TempoEvmFactory;
 use reth_chainspec::EthChainSpec;
@@ -89,12 +89,12 @@ impl BlockExecutorFactory for TempoEvmConfig {
 
     fn create_executor<'a, DB, I>(
         &'a self,
-        evm: TempoEvm<&'a mut State<DB>, I>,
+        evm: TempoEvm<DB, I>,
         ctx: Self::ExecutionCtx<'a>,
     ) -> impl BlockExecutorFor<'a, Self, DB, I>
     where
-        DB: Database + 'a,
-        I: Inspector<TempoContext<&'a mut State<DB>>> + 'a,
+        DB: StateDB + 'a,
+        I: Inspector<TempoContext<DB>> + 'a,
     {
         TempoBlockExecutor::new(evm, ctx, self.chain_spec())
     }
@@ -127,7 +127,7 @@ impl ConfigureEvm for TempoEvmConfig {
         let spec = self.chain_spec().tempo_hardfork_at(header.timestamp());
 
         Ok(EvmEnv {
-            cfg_env: cfg_env.with_spec(spec),
+            cfg_env: cfg_env.with_spec_and_mainnet_gas_params(spec),
             block_env: TempoBlockEnv {
                 inner: block_env,
                 timestamp_millis_part: header.timestamp_millis_part,
@@ -160,7 +160,7 @@ impl ConfigureEvm for TempoEvmConfig {
         let spec = self.chain_spec().tempo_hardfork_at(attributes.timestamp);
 
         Ok(EvmEnv {
-            cfg_env: cfg_env.with_spec(spec),
+            cfg_env: cfg_env.with_spec_and_mainnet_gas_params(spec),
             block_env: TempoBlockEnv {
                 inner: block_env,
                 timestamp_millis_part: attributes.timestamp_millis_part,
@@ -196,7 +196,9 @@ impl ConfigureEvm for TempoEvmConfig {
                 parent_beacon_block_root: block.header().parent_beacon_block_root(),
                 // no ommers in tempo
                 ommers: &[],
-                withdrawals: block.body().withdrawals.as_ref().map(Cow::Borrowed),
+                withdrawals: block.body().withdrawals.as_ref().map(|w| Cow::Borrowed(w.as_slice())),
+                extra_data: block.header().extra_data().clone(),
+                tx_count_hint: Some(block.body().transactions.len()),
             },
             general_gas_limit: block.header().general_gas_limit,
             extra_data: block.header().extra_data().clone(),
@@ -218,7 +220,9 @@ impl ConfigureEvm for TempoEvmConfig {
                 parent_hash: parent.hash(),
                 parent_beacon_block_root: attributes.parent_beacon_block_root,
                 ommers: &[],
-                withdrawals: attributes.inner.withdrawals.map(Cow::Owned),
+                withdrawals: attributes.inner.withdrawals.map(|w| Cow::Owned(w.into_inner())),
+                extra_data: attributes.extra_data.clone(),
+                tx_count_hint: None,
             },
             general_gas_limit: attributes.general_gas_limit,
             extra_data: attributes.extra_data,
@@ -258,7 +262,7 @@ impl ConfigureEngineEvm<TempoExecutionData> for TempoEvmConfig {
         &self,
         payload: &TempoExecutionData,
     ) -> Result<impl ExecutableTxIterator<Self>, Self::Error> {
-        let transactions = payload.block.body().transactions.clone().into_iter();
+        let transactions = payload.block.body().transactions.clone();
         let convert = |tx: TempoTxEnvelope| tx.try_into_recovered();
 
         Ok((transactions, convert))

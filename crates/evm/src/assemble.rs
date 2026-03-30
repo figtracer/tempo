@@ -54,16 +54,15 @@ impl BlockAssembler<TempoEvmConfig> for TempoBlockAssembler {
 
         let timestamp_millis_part = evm_env.block_env.timestamp_millis_part;
 
-        // Set extra_data on the inner assembler before building
-        let mut assembler = self.inner.clone();
-        assembler.extra_data = extra_data;
-
         // Delegate block building to the inner assembler
-        let block = assembler.assemble_block(BlockAssemblerInput::<
+        // extra_data is set via EthBlockExecutionCtx
+        let mut inner_ctx = inner;
+        inner_ctx.extra_data = extra_data;
+        let block = self.inner.assemble_block(BlockAssemblerInput::<
             EthBlockExecutorFactory<TempoReceiptBuilder, TempoChainSpec, TempoEvmFactory>,
         >::new(
             evm_env,
-            inner,
+            inner_ctx,
             &parent,
             transactions,
             output,

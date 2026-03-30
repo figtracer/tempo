@@ -22,7 +22,7 @@ fn millis_timestamp<DB: Database>(context: TempoInstructionContext<'_, DB>) {
 /// Returns configured instructions table for Tempo.
 pub(crate) fn tempo_instructions<DB: Database>() -> EthInstructions<EthInterpreter, TempoContext<DB>>
 {
-    let mut instructions = EthInstructions::new_mainnet();
+    let mut instructions = EthInstructions::new_mainnet_with_spec(revm::primitives::hardfork::SpecId::default());
     instructions.insert_instruction(
         MILLIS_TIMESTAMP,
         Instruction::new(millis_timestamp, MILLIS_TIMESTAMP_GAS_COST),

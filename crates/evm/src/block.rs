@@ -1,10 +1,10 @@
 use crate::{TempoBlockExecutionCtx, evm::TempoEvm};
 use alloy_consensus::{Transaction, transaction::TxHashRef};
 use alloy_evm::{
-    Database, Evm,
+    Database, Evm, RecoveredTx,
     block::{
         BlockExecutionError, BlockExecutionResult, BlockExecutor, BlockValidationError,
-        ExecutableTx, OnStateHook,
+        ExecutableTx, OnStateHook, TxResult,
     },
     eth::{
         EthBlockExecutor,
@@ -19,12 +19,8 @@ use commonware_cryptography::{
     Verifier,
     ed25519::{PublicKey, Signature},
 };
-use reth_revm::{Inspector, State, context::result::ResultAndState};
-use revm::{
-    DatabaseCommit,
-    context::ContextTr,
-    state::{Account, Bytecode},
-};
+use reth_revm::{Inspector, context::result::ResultAndState};
+use revm::state::Bytecode;
 use std::collections::{HashMap, HashSet};
 use tempo_chainspec::{TempoChainSpec, hardfork::TempoHardforks};
 use tempo_precompiles::{
@@ -35,7 +31,7 @@ use tempo_precompiles::{
 use tempo_primitives::{
     SubBlock, SubBlockMetadata, TempoReceipt, TempoTxEnvelope, subblock::PartialValidatorKey,
 };
-use tempo_revm::{TempoHaltReason, evm::TempoContext};
+use tempo_revm::evm::TempoContext;
 use tracing::trace;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -69,16 +65,16 @@ impl ReceiptBuilder for TempoReceiptBuilder {
 
     fn build_receipt<E: Evm>(
         &self,
-        ctx: ReceiptBuilderCtx<'_, Self::Transaction, E>,
+        ctx: ReceiptBuilderCtx<'_, <Self::Transaction as alloy_consensus::TransactionEnvelope>::TxType, E>,
     ) -> Self::Receipt {
         let ReceiptBuilderCtx {
-            tx,
+            tx_type,
             result,
             cumulative_gas_used,
             ..
         } = ctx;
         TempoReceipt {
-            tx_type: tx.tx_type(),
+            tx_type,
             // Success flag was added in `EIP-658: Embedding transaction status code in
             // receipts`.
             success: result.is_success(),
@@ -88,11 +84,30 @@ impl ReceiptBuilder for TempoReceiptBuilder {
     }
 }
 
+/// Result of executing a Tempo transaction.
+///
+/// Wraps the inner EVM result with additional Tempo-specific transaction info needed
+/// for validation during commit.
+pub(crate) struct TempoTxResult<R> {
+    /// Inner transaction result.
+    pub(crate) inner: R,
+    /// The original transaction, needed for validation during commit.
+    pub(crate) tx: TempoTxEnvelope,
+}
+
+impl<R: TxResult> TxResult for TempoTxResult<R> {
+    type HaltReason = R::HaltReason;
+
+    fn result(&self) -> &ResultAndState<Self::HaltReason> {
+        self.inner.result()
+    }
+}
+
 /// Block executor for Tempo. Wraps an inner [`EthBlockExecutor`].
 pub(crate) struct TempoBlockExecutor<'a, DB: Database, I> {
     pub(crate) inner: EthBlockExecutor<
         'a,
-        TempoEvm<&'a mut State<DB>, I>,
+        TempoEvm<DB, I>,
         &'a TempoChainSpec,
         TempoReceiptBuilder,
     >,
@@ -110,11 +125,11 @@ pub(crate) struct TempoBlockExecutor<'a, DB: Database, I> {
 
 impl<'a, DB, I> TempoBlockExecutor<'a, DB, I>
 where
-    DB: Database,
-    I: Inspector<TempoContext<&'a mut State<DB>>>,
+    DB: Database + revm::DatabaseCommit,
+    I: Inspector<TempoContext<DB>>,
 {
     pub(crate) fn new(
-        evm: TempoEvm<&'a mut State<DB>, I>,
+        evm: TempoEvm<DB, I>,
         ctx: TempoBlockExecutionCtx<'a>,
         chain_spec: &'a TempoChainSpec,
     ) -> Self {
@@ -446,12 +461,20 @@ where
 
 impl<'a, DB, I> BlockExecutor for TempoBlockExecutor<'a, DB, I>
 where
-    DB: Database,
-    I: Inspector<TempoContext<&'a mut State<DB>>>,
+    DB: Database + revm::DatabaseCommit,
+    I: Inspector<TempoContext<DB>>,
 {
     type Transaction = TempoTxEnvelope;
     type Receipt = TempoReceipt;
-    type Evm = TempoEvm<&'a mut State<DB>, I>;
+    type Evm = TempoEvm<DB, I>;
+    type Result = TempoTxResult<
+        <EthBlockExecutor<
+            'a,
+            TempoEvm<DB, I>,
+            &'a TempoChainSpec,
+            TempoReceiptBuilder,
+        > as BlockExecutor>::Result,
+    >;
 
     fn apply_pre_execution_changes(&mut self) -> Result<(), alloy_evm::block::BlockExecutionError> {
         self.inner.apply_pre_execution_changes()?;
@@ -463,31 +486,31 @@ where
             .spec
             .is_allegretto_active_at_timestamp(block_timestamp)
         {
+            use revm::context_interface::JournalTr;
+
             let evm = self.evm_mut();
-            let db = evm.ctx_mut().db_mut();
+            let ctx = evm.ctx_mut();
 
-            // Load the keychain account from the cache
-            let acc = db
-                .load_cache_account(ACCOUNT_KEYCHAIN_ADDRESS)
-                .map_err(BlockExecutionError::other)?;
+            // Check if the keychain account needs code initialization
+            // First do a read-only check
+            let needs_init = {
+                let acc = ctx
+                    .journaled_state
+                    .load_account(ACCOUNT_KEYCHAIN_ADDRESS)
+                    .map_err(BlockExecutionError::other)?;
+                acc.data.info.is_empty_code_hash()
+            };
 
-            // Get existing account info or create default
-            let mut acc_info = acc.account_info().unwrap_or_default();
+            if needs_init {
+                use revm::context_interface::journaled_state::account::JournaledAccountTr;
+                // Set the keychain code via mutable access
+                let mut acc = ctx
+                    .journaled_state
+                    .load_account_mut(ACCOUNT_KEYCHAIN_ADDRESS)
+                    .map_err(BlockExecutionError::other)?;
 
-            // Only initialize if the account has no code
-            if acc_info.is_empty_code_hash() {
-                // Set the keychain code
                 let code = Bytecode::new_legacy(Bytes::from_static(&[0xef]));
-                acc_info.code_hash = code.hash_slow();
-                acc_info.code = Some(code);
-
-                // Convert to revm account and mark as touched
-                let mut revm_acc: Account = acc_info.into();
-                revm_acc.mark_touch();
-
-                // Commit the account to the database to ensure it persists
-                // even if no transactions are executed in this block
-                db.commit(HashMap::from_iter([(ACCOUNT_KEYCHAIN_ADDRESS, revm_acc)]));
+                acc.data.set_code_and_hash_slow(code);
             }
         }
 
@@ -497,11 +520,14 @@ where
     fn execute_transaction_without_commit(
         &mut self,
         tx: impl ExecutableTx<Self>,
-    ) -> Result<ResultAndState<TempoHaltReason>, BlockExecutionError> {
+    ) -> Result<Self::Result, BlockExecutionError> {
         let beneficiary = self.evm_mut().ctx_mut().block.beneficiary;
+        // Use into_parts to get the TxEnv and recovered tx separately
+        let (_tx_env, recovered) = tx.into_parts();
+        let original_tx = recovered.tx().clone();
         // If we are dealing with a subblock transaction, configure the fee recipient context.
         if self.evm().ctx().cfg.spec.is_allegretto()
-            && let Some(validator) = tx.tx().subblock_proposer()
+            && let Some(validator) = original_tx.subblock_proposer()
         {
             let fee_recipient = *self
                 .subblock_fee_recipients
@@ -510,21 +536,30 @@ where
 
             self.evm_mut().ctx_mut().block.beneficiary = fee_recipient;
         }
-        let result = self.inner.execute_transaction_without_commit(tx);
+
+        // Reconstruct a Recovered<TempoTxEnvelope> to pass to inner executor
+        let recovered_tx = alloy_consensus::transaction::Recovered::new_unchecked(
+            original_tx.clone(),
+            *recovered.signer(),
+        );
+        let inner = self.inner.execute_transaction_without_commit(&recovered_tx)?;
 
         self.evm_mut().ctx_mut().block.beneficiary = beneficiary;
 
-        result
+        Ok(TempoTxResult {
+            inner,
+            tx: original_tx,
+        })
     }
 
     fn commit_transaction(
         &mut self,
-        output: ResultAndState<TempoHaltReason>,
-        tx: impl ExecutableTx<Self>,
+        output: Self::Result,
     ) -> Result<u64, BlockExecutionError> {
-        let next_section = self.validate_tx(tx.tx(), output.result.gas_used())?;
+        let TempoTxResult { inner, tx: original_tx } = output;
+        let next_section = self.validate_tx(&original_tx, inner.result.result.gas_used())?;
 
-        let gas_used = self.inner.commit_transaction(output, &tx)?;
+        let gas_used = self.inner.commit_transaction(inner)?;
 
         // TODO: remove once revm supports emitting logs for reverted transactions
         //
@@ -547,7 +582,7 @@ where
             }
             BlockSection::NonShared => {
                 self.non_shared_gas_left -= gas_used;
-                if !tx.tx().is_payment() {
+                if !original_tx.is_payment() {
                     self.non_payment_gas_left -= gas_used;
                 }
             }
@@ -564,7 +599,7 @@ where
                     self.seen_subblocks.last_mut().unwrap()
                 };
 
-                last_subblock.1.push(tx.tx().clone());
+                last_subblock.1.push(original_tx);
             }
             BlockSection::GasIncentive => {
                 self.incentive_gas_used += gas_used;
@@ -593,6 +628,10 @@ where
             );
         }
         self.inner.finish()
+    }
+
+    fn receipts(&self) -> &[Self::Receipt] {
+        self.inner.receipts()
     }
 
     fn set_state_hook(&mut self, hook: Option<Box<dyn OnStateHook>>) {
