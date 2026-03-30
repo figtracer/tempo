@@ -9,7 +9,7 @@ use revm::{
     Database,
     context::{
         Block, Cfg, ContextTr, JournalTr, LocalContextTr, Transaction,
-        result::{EVMError, ExecutionResult, InvalidTransaction},
+        result::{EVMError, ExecutionResult, InvalidTransaction, ResultGas},
         transaction::{AccessListItem, AccessListItemTr},
     },
     handler::{
@@ -22,11 +22,13 @@ use revm::{
         Gas, InitialAndFloorGas,
         gas::{
             ACCESS_LIST_ADDRESS, ACCESS_LIST_STORAGE_KEY, CALLVALUE, COLD_ACCOUNT_ACCESS_COST,
-            CREATE, STANDARD_TOKEN_COST, calc_tx_floor_cost, get_tokens_in_calldata, initcode_cost,
+            CREATE, INITCODE_WORD_COST, STANDARD_TOKEN_COST, TOTAL_COST_FLOOR_PER_TOKEN,
+            NON_ZERO_BYTE_MULTIPLIER_ISTANBUL, get_tokens_in_calldata,
         },
         interpreter::EthInterpreter,
     },
     primitives::eip7702,
+    context_interface::journaled_state::account::JournaledAccountTr,
     state::Bytecode,
 };
 use tempo_contracts::{
@@ -73,7 +75,7 @@ fn primitive_signature_verification_gas(signature: &PrimitiveSignature) -> u64 {
         PrimitiveSignature::Secp256k1(_) => 0,
         PrimitiveSignature::P256(_) => P256_VERIFY_GAS,
         PrimitiveSignature::WebAuthn(webauthn_sig) => {
-            let tokens = get_tokens_in_calldata(&webauthn_sig.webauthn_data, true);
+            let tokens = get_tokens_in_calldata(&webauthn_sig.webauthn_data, NON_ZERO_BYTE_MULTIPLIER_ISTANBUL);
             P256_VERIFY_GAS + tokens * STANDARD_TOKEN_COST
         }
     }
@@ -417,6 +419,7 @@ where
         &mut self,
         evm: &mut Self::Evm,
         result: <<Self::Evm as EvmTr>::Frame as FrameTr>::FrameResult,
+        result_gas: ResultGas,
     ) -> Result<ExecutionResult<Self::HaltReason>, Self::Error> {
         evm.logs.clear();
         if !result.instruction_result().is_ok() {
@@ -424,7 +427,7 @@ where
         }
 
         MainnetHandler::default()
-            .execution_result(evm, result)
+            .execution_result(evm, result, result_gas)
             .map(|result| result.map_haltreason(Into::into))
     }
 
@@ -479,7 +482,7 @@ where
                 let mut authority_acc = journal.load_account_with_code_mut(authority)?;
 
                 // 4. Verify the code of `authority` is either empty or already delegated.
-                if let Some(bytecode) = &authority_acc.info.code {
+                if let Some(bytecode) = authority_acc.data.code() {
                     // if it is not empty and it is not eip7702
                     if !bytecode.is_empty() && !bytecode.is_eip7702() {
                         continue;
@@ -487,13 +490,14 @@ where
                 }
 
                 // 5. Verify the nonce of `authority` is equal to `nonce`.
-                if authorization.nonce != authority_acc.info.nonce {
+                if authorization.nonce != authority_acc.data.nonce() {
                     continue;
                 }
 
                 // 6. Add gas refund if authority already exists
-                if !(authority_acc.is_empty()
-                    && authority_acc.is_loaded_as_not_existing_not_touched())
+                let account = authority_acc.data.account();
+                if !(account.is_empty()
+                    && account.is_loaded_as_not_existing_not_touched())
                 {
                     refunded_accounts += 1;
                 }
@@ -502,7 +506,7 @@ where
                 //  * As a special case, if `address` is `0x0000000000000000000000000000000000000000` do not write the designation.
                 //    Clear the accounts code and reset the account's code hash to the empty hash `0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470`.
                 // 8. Increase the nonce of `authority` by one.
-                authority_acc.delegate(*authorization.address());
+                authority_acc.data.delegate(*authorization.address());
             }
 
             let refunded_gas =
@@ -527,7 +531,7 @@ where
         // Load caller's account
         let mut caller_account = journal.load_account_with_code_mut(tx.caller())?.data;
 
-        if caller_account.info.has_no_code_and_nonce() {
+        if caller_account.account().info.has_no_code_and_nonce() {
             caller_account.set_code(
                 DEFAULT_7702_DELEGATE_CODE_HASH,
                 Bytecode::new_eip7702(DEFAULT_7702_DELEGATE_ADDRESS),
@@ -542,7 +546,7 @@ where
 
         // Validate account nonce and code (EIP-3607) using upstream helper
         pre_execution::validate_account_nonce_and_code(
-            &caller_account.info,
+            &caller_account.account().info,
             tx.nonce(),
             cfg.is_eip3607_disabled(),
             // skip nonce check if 2D nonce is used
@@ -553,7 +557,7 @@ where
         caller_account.touch();
 
         if !nonce_key.is_zero() {
-            let internals = EvmInternals::new(journal, block);
+            let internals = EvmInternals::new(journal, block, cfg, tx);
             let mut storage_provider = EvmPrecompileStorageProvider::new_max_gas(internals, cfg);
             let mut nonce_manager = NonceManager::new(&mut storage_provider);
 
@@ -682,7 +686,7 @@ where
             }
 
             // Now authorize the key in the precompile
-            let internals = EvmInternals::new(journal, block);
+            let internals = EvmInternals::new(journal, block, cfg, tx);
             let mut storage_provider = EvmPrecompileStorageProvider::new_max_gas(internals, cfg);
 
             let mut keychain = AccountKeychain::new(&mut storage_provider);
@@ -795,7 +799,7 @@ where
 
             // Always need to set the transaction key for Keychain signatures
             let mut storage_provider =
-                EvmPrecompileStorageProvider::new_max_gas(EvmInternals::new(journal, &block), cfg);
+                EvmPrecompileStorageProvider::new_max_gas(EvmInternals::new(journal, &block, cfg, tx), cfg);
             let mut keychain = AccountKeychain::new(&mut storage_provider);
 
             if !is_authorizing_this_key {
@@ -832,7 +836,7 @@ where
 
         let result = {
             let mut storage_provider =
-                EvmPrecompileStorageProvider::new_max_gas(EvmInternals::new(journal, &block), cfg);
+                EvmPrecompileStorageProvider::new_max_gas(EvmInternals::new(journal, &block, cfg, tx), cfg);
             TipFeeManager::new(&mut storage_provider).collect_fee_pre_tx(
                 self.fee_payer,
                 self.fee_token,
@@ -912,7 +916,7 @@ where
 
         // Create storage provider and fee manager
         let (journal, block) = (&mut context.journaled_state, &context.block);
-        let internals = EvmInternals::new(&mut *journal, block);
+        let internals = EvmInternals::new(&mut *journal, block, &context.cfg, &context.tx);
         let beneficiary = internals.block_env().beneficiary();
         let mut storage_provider =
             EvmPrecompileStorageProvider::new_max_gas(internals, &context.cfg);
@@ -1021,7 +1025,7 @@ where
     /// - P256 (129 bytes): 21k base + 5k for P256 verification
     /// - WebAuthn (>129 bytes): 21k base + 5k + calldata gas for variable data
     #[inline]
-    fn validate_initial_tx_gas(&self, evm: &Self::Evm) -> Result<InitialAndFloorGas, Self::Error> {
+    fn validate_initial_tx_gas(&self, evm: &mut Self::Evm) -> Result<InitialAndFloorGas, Self::Error> {
         let tx = evm.ctx_ref().tx();
 
         // Route to appropriate gas calculation based on transaction type
@@ -1030,7 +1034,7 @@ where
             validate_aa_initial_tx_gas(evm)
         } else {
             // Standard transaction - use default revm validation
-            let spec = evm.ctx_ref().cfg().spec().into();
+            let spec = (*evm.ctx_ref().cfg().spec()).into();
             Ok(
                 validation::validate_initial_tx_gas(tx, spec, evm.ctx.cfg.is_eip7623_disabled())
                     .map_err(TempoInvalidTransaction::EthInvalidTransaction)?,
@@ -1063,7 +1067,8 @@ where
 
             Ok(ExecutionResult::Halt {
                 reason: TempoHaltReason::SubblockTxFeePayment,
-                gas_used: 0,
+                gas: ResultGas::default(),
+                logs: Vec::new(),
             })
         } else {
             MainnetHandler::default()
@@ -1116,7 +1121,7 @@ fn calculate_aa_batch_intrinsic_gas<'a>(
 
     for call in calls {
         // 4a. Calldata gas using revm helper
-        let tokens = get_tokens_in_calldata(&call.input, true);
+        let tokens = get_tokens_in_calldata(&call.input, NON_ZERO_BYTE_MULTIPLIER_ISTANBUL);
         total_tokens += tokens;
 
         // 4b. CREATE-specific costs
@@ -1124,8 +1129,9 @@ fn calculate_aa_batch_intrinsic_gas<'a>(
             // CREATE costs 32000 additional gas
             gas.initial_gas += CREATE; // 32000 gas
 
-            // EIP-3860: Initcode analysis gas using revm helper
-            gas.initial_gas += initcode_cost(call.input.len());
+            // EIP-3860: Initcode analysis gas (2 per 32-byte chunk)
+            let num_words = ((call.input.len() as u64) + 31) / 32;
+            gas.initial_gas += num_words * INITCODE_WORD_COST;
         }
 
         // Note: Transaction value is not allowed in AA transactions as there is no balances in accounts yet.
@@ -1156,8 +1162,8 @@ fn calculate_aa_batch_intrinsic_gas<'a>(
         gas.initial_gas += storages * ACCESS_LIST_STORAGE_KEY; // 1900 per storage
     }
 
-    // 6. Floor gas  using revm helper
-    gas.floor_gas = calc_tx_floor_cost(total_tokens); // tokens * 10 + 21000
+    // 6. Floor gas (EIP-7623)
+    gas.floor_gas = total_tokens * TOTAL_COST_FLOOR_PER_TOKEN + 21_000;
 
     Ok(gas)
 }

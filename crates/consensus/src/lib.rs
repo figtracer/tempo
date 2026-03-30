@@ -4,7 +4,8 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
 use alloy_consensus::{BlockHeader, Transaction, transaction::TxHashRef};
-use alloy_evm::{block::BlockExecutionResult, revm::primitives::Address};
+use alloy_evm::block::BlockExecutionResult;
+use alloy_primitives::{Address, B256, Bloom};
 use reth_chainspec::EthChainSpec;
 use reth_consensus::{Consensus, ConsensusError, FullConsensus, HeaderValidator};
 use reth_consensus_common::validation::{
@@ -126,17 +127,15 @@ impl HeaderValidator<TempoHeader> for TempoConsensus {
 }
 
 impl Consensus<Block> for TempoConsensus {
-    type Error = ConsensusError;
-
     fn validate_body_against_header(
         &self,
         body: &BlockBody,
         header: &SealedHeader<TempoHeader>,
-    ) -> Result<(), Self::Error> {
+    ) -> Result<(), ConsensusError> {
         Consensus::<Block>::validate_body_against_header(&self.inner, body, header)
     }
 
-    fn validate_block_pre_execution(&self, block: &SealedBlock<Block>) -> Result<(), Self::Error> {
+    fn validate_block_pre_execution(&self, block: &SealedBlock<Block>) -> Result<(), ConsensusError> {
         let transactions = &block.body().transactions;
 
         if let Some(tx) = transactions.iter().find(|&tx| {
@@ -209,8 +208,9 @@ impl FullConsensus<TempoPrimitives> for TempoConsensus {
         &self,
         block: &RecoveredBlock<Block>,
         result: &BlockExecutionResult<TempoReceipt>,
+        receipt_root_bloom: Option<(B256, Bloom)>,
     ) -> Result<(), ConsensusError> {
-        FullConsensus::<TempoPrimitives>::validate_block_post_execution(&self.inner, block, result)
+        FullConsensus::<TempoPrimitives>::validate_block_post_execution(&self.inner, block, result, receipt_root_bloom)
     }
 }
 

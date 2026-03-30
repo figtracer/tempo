@@ -26,7 +26,7 @@ pub trait PrecompileStorageProvider {
     fn get_account_info(
         &mut self,
         address: Address,
-    ) -> Result<&'_ AccountInfo, TempoPrecompileError>;
+    ) -> Result<AccountInfo, TempoPrecompileError>;
     fn sload(&mut self, address: Address, key: U256) -> Result<U256, TempoPrecompileError>;
     fn tload(&mut self, address: Address, key: U256) -> Result<U256, TempoPrecompileError>;
     fn sstore(

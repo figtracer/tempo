@@ -40,7 +40,7 @@ pub struct TempoEvm<DB: Database, I> {
 impl<DB: Database, I> TempoEvm<DB, I> {
     /// Create a new Tempo EVM.
     pub fn new(ctx: TempoContext<DB>, inspector: I) -> Self {
-        let mut precompiles = PrecompilesMap::from_static(EthPrecompiles::default().precompiles);
+        let mut precompiles = PrecompilesMap::from_static(EthPrecompiles::new(ctx.cfg.spec.into()).precompiles);
         extend_tempo_precompiles(&mut precompiles, &ctx.cfg);
 
         Self::new_inner(Evm {
@@ -210,7 +210,7 @@ mod tests {
         // HACK: initialize default fee token and pathUSD so that fee token validation passes
         let ctx = tempo_evm.ctx_mut();
         let mut storage = EvmPrecompileStorageProvider::new_max_gas(
-            EvmInternals::new(&mut ctx.journaled_state, &ctx.block),
+            EvmInternals::new(&mut ctx.journaled_state, &ctx.block, &ctx.cfg, &ctx.tx),
             &ctx.cfg,
         );
         TIP20Token::new(0, &mut storage)
@@ -261,7 +261,7 @@ mod tests {
         ctx.block.timestamp = U256::from(1000);
         ctx.block.timestamp_millis_part = 100;
         let mut storage = EvmPrecompileStorageProvider::new_max_gas(
-            EvmInternals::new(&mut ctx.journaled_state, &ctx.block),
+            EvmInternals::new(&mut ctx.journaled_state, &ctx.block, &ctx.cfg, &ctx.tx),
             &ctx.cfg,
         );
         TIP20Token::new(0, &mut storage)

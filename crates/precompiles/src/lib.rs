@@ -67,7 +67,8 @@ pub const INPUT_PER_WORD_COST: u64 = 6;
 
 #[inline]
 pub fn input_cost(calldata_len: usize) -> u64 {
-    revm::interpreter::gas::cost_per_word(calldata_len, INPUT_PER_WORD_COST).unwrap_or(u64::MAX)
+    let num_words = ((calldata_len as u64) + 31) / 32;
+    INPUT_PER_WORD_COST.checked_mul(num_words).unwrap_or(u64::MAX)
 }
 
 pub trait Precompile {
